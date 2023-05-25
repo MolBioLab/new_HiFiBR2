@@ -80,21 +80,17 @@ elif [[ $sequencing_mode == "PE" ]]; then
 		mv ${substring}* ${substring}/1_preprocess 		# cannot move directory A to directory A
 	done
 fi
-fi
 
 #-----------------------------------------------------------------------------------------------
 # B. PROCESSING & ANALYZING
-for sample in mini; do
-# for sample in ${dirName[@]}; do
-# Prepare
-echo "-----------------------------------------------------------"
-echo "ANALYZING $sample ..."
-cd $ANALYSE_PATH/$sample/		
-cd ../
+for sample in ${dirName[@]}; do
+	# Prepare
+	echo "-----------------------------------------------------------"
+	echo "ANALYZING $sample ..."
+	cd $ANALYSE_PATH/$sample/		
+	cd ../
 
 #-------------------------------------------------------------------------
-if False
-then
 # 1. 1_preprocess
 	echo "* STEP 1: PREPROCESSING raw reads *"
 	if [[ $sequencing_mode == "PE" ]]; then
