@@ -953,61 +953,64 @@ for f in input_files:
     # 3. Find extra insertion junction from Unmapped
     print("alt-HiFiBR EXTRA INSERTION...")
         # Find insertion
-    cmd = f"samtools fastq {path}/2_mapping/{sample}_Unaligned2.sam > {path}/2_mapping/{sample}_Unaligned2.fq"
-    os.system(cmd)
-    
-    f_input = f"{path}/2_mapping/{sample}_Unaligned2.fq" # "Seq3_insertion_0D-0D-147_droppedByFilter.fq"
-    with open(f_input, "r") as f_in:
-        lines = f_in.readlines()
-        lines = list(map(str.strip, lines))
+    unaligned2_sam = f"{path}/2_mapping/{sample}_Unaligned2.sam"
+    if os.path.exists(unaligned2_sam):
+        cmd = f"samtools fastq {unaligned2_sam} > {path}/2_mapping/{sample}_Unaligned2.fq"
+        os.system(cmd)
         
-        startLine_L = list(range(0, len(lines), 4))
-        full_SeqInfo = [[ lines[startLine], lines[startLine+1], lines[startLine+3] ]
-                        for startLine in startLine_L] # [ [Header1, Seq1, Qual1] , [...], [...]] 
-    ins_info2 = extra_insertion(full_SeqInfo, path) 
-    
-        # Add rows to df_info with colName correspond to label variable line 835
-    try:
-        for k, v in ins_info2.items():
-            insSeq = k
-            timeofevent, repre = v
+        f_input = f"{path}/2_mapping/{sample}_Unaligned2.fq" # "Seq3_insertion_0D-0D-147_droppedByFilter.fq"
+        with open(f_input, "r") as f_in:
+            lines = f_in.readlines()
+            lines = list(map(str.strip, lines))
             
-            # if extra insertion junc already analyzed above
-            if insSeq in df_info["Seq of ins"].to_list():
-                df_boolean = ( df_info['Seq of ins'] == insSeq ) & ( df_info['Repair event'] == "insertion" )
-                need_modify_index = df_info[df_boolean].index.tolist()
+            startLine_L = list(range(0, len(lines), 4))
+            full_SeqInfo = [[ lines[startLine], lines[startLine+1], lines[startLine+3] ]
+                            for startLine in startLine_L] # [ [Header1, Seq1, Qual1] , [...], [...]] 
+        ins_info2 = extra_insertion(full_SeqInfo, path) 
+        
+            # Add rows to df_info with colName correspond to label variable line 835
+        try:
+            for k, v in ins_info2.items():
+                insSeq = k
+                timeofevent, repre = v
                 
-                for index_i in need_modify_index:
-                    old_timeofevent = int(df_info.loc[df_info.index[index_i], 'Times of event (popu)'])
-                    df_info.loc[df_info.index[index_i], 'Times of event (popu)'] = old_timeofevent + timeofevent
+                # if extra insertion junc already analyzed above
+                if insSeq in df_info["Seq of ins"].to_list():
+                    df_boolean = ( df_info['Seq of ins'] == insSeq ) & ( df_info['Repair event'] == "insertion" )
+                    need_modify_index = df_info[df_boolean].index.tolist()
                     
-            else:
-                Ml = cutPos1 - 1
-                Mr = len(ref_seq) - cutPos2 + 1
-                insLen = len(insSeq)
-                insCigar = f"{Ml}M{insLen}I{Mr}M"
-                readLen = len(ref_seq) - (cutPos2 - cutPos1 + 1) + insLen
-                reconSeq = ref_seq[:cutPos1] + insSeq + ref_seq[cutPos2:]
-                
-                add_ins_info = ["pCOH_CD4_alt_PCR", insCigar, readLen, insCigar,
-                                Ml, Mr, 0, 0, 0, 0, 0,
-                                cutPos1, cutPos1 + insLen, insLen, insSeq,
-                                "insertion", reconSeq, timeofevent,
-                                "", 0, "", 1, "", repre, ""]
-                df_info.loc[len(df_info.index)] = add_ins_info
-    except:
-        print("no insertion")
+                    for index_i in need_modify_index:
+                        old_timeofevent = int(df_info.loc[df_info.index[index_i], 'Times of event (popu)'])
+                        df_info.loc[df_info.index[index_i], 'Times of event (popu)'] = old_timeofevent + timeofevent
+                        
+                else:
+                    Ml = cutPos1 - 1
+                    Mr = len(ref_seq) - cutPos2 + 1
+                    insLen = len(insSeq)
+                    insCigar = f"{Ml}M{insLen}I{Mr}M"
+                    readLen = len(ref_seq) - (cutPos2 - cutPos1 + 1) + insLen
+                    reconSeq = ref_seq[:cutPos1] + insSeq + ref_seq[cutPos2:]
+                    
+                    add_ins_info = ["pCOH_CD4_alt_PCR", insCigar, readLen, insCigar,
+                                    Ml, Mr, 0, 0, 0, 0, 0,
+                                    cutPos1, cutPos1 + insLen, insLen, insSeq,
+                                    "insertion", reconSeq, timeofevent,
+                                    "", 0, "", 1, "", repre, ""]
+                    df_info.loc[len(df_info.index)] = add_ins_info
+        except:
+            print("no insertion")
     
         # Write fq file of insertion junction (in order to check ins juction by multiple alignment)
     ins_name_L = df_info[df_info["Repair event"] == "insertion"]["Represented read"].to_list()
-    for ins_name in ins_name_L:
-        cmd = f"cat {path}/2_mapping/{sample}_Unaligned2.fq | rg -A 3 '{ins_name}' >> {path}/3_HiFiBR/{sample}_insertion.fq"
-        os.system(cmd)
+    if len(ins_name_L) > 0:
+        for ins_name in ins_name_L:
+            cmd = f"cat {path}/2_mapping/{sample}_Unaligned2.fq | rg -A 3 '{ins_name}' >> {path}/3_HiFiBR/{sample}_insertion.fq"
+            os.system(cmd)
 
 
     # 4. Filter junctions with "minTimeofEvent" 
     print("alt-HiFiBR FILTER minTimeofEvent...")
-    minTimeofEvent = sys.argv[8]
+    minTimeofEvent = int(sys.argv[8])
     df_info["Times of event (popu)"] = df_info["Times of event (popu)"].astype("int")
     df_info = df_info[df_info["Times of event (popu)"] >= minTimeofEvent]
     df_info.to_excel(f"{f[:-4]}_Final_temp2.xlsx",index=False)
@@ -1015,5 +1018,7 @@ for f in input_files:
     # 5. Predict tooShort Junc
     print("alt-HiFiBR PREDICT TOOSHORT JUNC...")
     os.chdir(f"{path}/3_HiFiBR")
-    cmd = f"python Detect_tooShort.py {sample} {sys.argv[2]} {ref} {sys.argv[4]}"
+    cmd = f"python step4_Detect_tooShort.py {sample} {sys.argv[2]} {ref} {sys.argv[4]}"
     os.system(cmd)
+    
+    os.remove(f"{sample}_Final_temp.xlsx", f"{sample}_Final_temp2.xlsx")
