@@ -87,10 +87,10 @@ auto1_repre = auto2_repre = get_info(f"{sample}_reanalyse_Auto.sam")
 check_all_D = {} # record all overlapped-pair
 
 
-for in1 in tqdm ( range(len(auto1_repre)) , desc=" outer", position=0):
+for in1 in tqdm ( range(len(auto1_repre)) , desc=" outer", position=0 ):
     auto1_name,auto1_cigar,auto1_seq,auto1_start,auto1_end,auto1_qual = auto1_repre[in1]
     
-    for in2 in tqdm( range(in1,len(auto2_repre)) , desc=" inner loop", position=1, leave=False):
+    for in2 in tqdm( range(in1,len(auto2_repre)) , desc=" inner loop", position=1, leave=False ):
         check_L = []
         auto2_name,auto2_cigar,auto2_seq,auto2_start,auto2_end,auto2_qual = auto2_repre[in2]
         
@@ -126,8 +126,7 @@ for in1 in tqdm ( range(len(auto1_repre)) , desc=" outer", position=0):
                         check_all_D[auto2_name] = auto1_name
                 
                 break
-    
-print(check_all_D)
+
 
 # Write to new xlsx
 def write_xlsx(row):
@@ -135,15 +134,18 @@ def write_xlsx(row):
         if row["Times of event (file)"] ==1 and row["Represented read"] == key:
             row["Maybe same event"] = value
     return row
-
-df2 = df.apply(write_xlsx,axis=1)
-df2 = df2[["Ref seq name", "Cigar", "Len of read", "Recontructed CIGAR",	
-              "Len of matching left", "Len of matching right", 
-              "Distance: break to left matching", "Distance: break to right matching",
-              "Nu del left side", "Nu del right side", "Total del nu", 
-              "Start of ins", "End of ins", "Len of ins", "Seq of ins",	
-              "Repair event", "Reconstructed seq", "Times of event (popu)", 
-              "Microhomo seq", "Len of microhomo", "Match_mismatch MH",
-              "Times of event (file)", "% read contain mismatch","Represented read",	
-              "No. Time of event (file)", "Maybe same event"]]
-df2.to_excel(f"{sample}_Padded_Final3.xlsx",index=False)
+if len(check_all_D) > 0:
+    df2 = df.apply(write_xlsx,axis=1)
+    df2 = df2[["Ref seq name", "Cigar", "Len of read", "Recontructed CIGAR",	
+                  "Len of matching left", "Len of matching right", 
+                  "Distance: break to left matching", "Distance: break to right matching",
+                  "Nu del left side", "Nu del right side", "Total del nu", 
+                  "Start of ins", "End of ins", "Len of ins", "Seq of ins",	
+                  "Repair event", "Reconstructed seq", "Times of event (popu)", 
+                  "Microhomo seq", "Len of microhomo", "Match_mismatch MH",
+                  "Times of event (file)", "% read contain mismatch","Represented read",	
+                  "No. Time of event (file)", "Maybe same event"]]
+    df2.to_excel(f"{sample}_Padded_Final.xlsx",index=False)
+else:
+    print("No maybe same event")
+    df.to_excel(f"{sample}_Padded_Final.xlsx",index=False)
