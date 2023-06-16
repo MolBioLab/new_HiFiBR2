@@ -1,0 +1,20 @@
+name: newHiFiBR2
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.6
+  - trimmomatic==0.39
+  - flash2==2.2.00
+  - samtools==1.11.0
+  - bamtools==2.4.0
+  - pip
+  - pip:
+    - pysam==0.19.1
+    - pandas==1.1.5
+    - numpy==1.19.5
+    - scikit-learn==0.24.2
+    - scipy==1.5.3
+    - diff-match-patch
+    - tqdm==4.46.0
+    - xlsxwriter==3.0.3
