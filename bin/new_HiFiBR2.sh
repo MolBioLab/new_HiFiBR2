@@ -5,10 +5,9 @@ print_usage(){
 	cat <<-EOF
 	Usage: $0 [options]
 
-	-w|--working-dir	Working directory which contains .fq files and config file. 
+	-w|--working-dir	Working directory which contains .fq files. 
 				${TAB}${TAB}${TAB}And also output files destination
-	-c|--config-file    	Name of config-file
-	-s|--software-path   	Path to new_HiFiBR2 software
+	-c|--config-file    	Path to config file
 	-h|--help
 	EOF
 }
@@ -29,8 +28,8 @@ else
 
 		case $opt in
 			"-w"|"--working-dir"	) ANALYSE_PATH="$1"; shift;;	# /path/to/working/directory/simu03_minidata2 
-			"-c"|"--config-file"	) CONFIG_FILE="$1"; shift;;	# mini_config.ini
-			"-s"|"--software-path"	) SOFTWARE_PATH="$1"; shift;;	# /path/to/software/directory/new_HiFiBR2_2
+			"-c"|"--config-file"	) CONFIG_PATH="$1"; shift;;	# mini_config.ini
+		
 			*			) echo "ERROR: Invalid option: \""$opt"\"" >&2
 						  exit 1;;
 		esac
@@ -38,7 +37,7 @@ else
 fi
 
 
-if [[ "$ANALYSE_PATH" == "" || "$CONFIG_FILE" == "" || "$SOFTWARE_PATH" == "" ]]; then
+if [[ "$ANALYSE_PATH" == "" ]]; then
 	echo "ERROR: Options -w and -c and -s require arguments." >&2
 	exit 1
 fi
@@ -46,8 +45,19 @@ fi
 #-----------------------------------------------------------------------------------------------
 # PRE-OPERATING
 alias python=python3.6
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+SOFTWARE_PATH="$(dirname "$SCRIPT_DIR")"
+
+	# Default path
+trimmomatic_path=${SOFTWARE_PATH}/script/trimmomatic-0.39/trimmomatic-0.39.jar
+CONFIG_PATH=${CONFIG_PATH:-${SOFTWARE_PATH}/defaults/config_test.ini}
+
+	# Rename config file
+CONFIG_FILE=${ANALYSE_PATH}/$(date +"%Y.%m.%d_%I.%M.%S")_config.ini
+cp $CONFIG_PATH $CONFIG_FILE
 cd $ANALYSE_PATH
-source ${ANALYSE_PATH}/${CONFIG_FILE}
+source $(date +"%Y.%m.%d_%I.%M.%S")_config.ini
+ref_path=${ref_path:-${SOFTWARE_PATH}/defaults/ref.fa}
 
 #-----------------------------------------------------------------------------------------------
 # OPERATING: 
@@ -64,8 +74,15 @@ if [[ $sequencing_mode == "SE" ]]; then
 		cd ${substring}
 		mkdir 1_preprocess 2_mapping 3_HiFiBR
 		cd ../
-		mv ${substring}* ${substring}/1_preprocess 		# cannot move directory A to directory A
+		
+		extension="${file##*.}"	
+		if [[ $extension == "gz" ]]; then
+			gzip -dk $file
+			file="${file%.*}"
+			cp $file ${substring}/1_preprocess
+		fi
 		mv ${substring}/1_preprocess/$file ${substring}/1_preprocess/${substring}_all.fq
+		
 	done
 
 elif [[ $sequencing_mode == "PE" ]]; then
@@ -77,16 +94,36 @@ elif [[ $sequencing_mode == "PE" ]]; then
 		cd ${substring}
 		mkdir 1_preprocess 2_mapping 3_HiFiBR
 		cd ../
-		mv ${substring}* ${substring}/1_preprocess 		# cannot move directory A to directory A
+		
+		for x in ${substring}*;do
+			if [ ! -d "$x" ]; then			
+				cp $x ${substring}/1_preprocess
+			fi
+		done
 	done
 fi
+#-----------------------------------------------------------------------------------------------
+# PRINT OUT PARAMETER
+cat << EOF
+===================================new_HiFiBR2==================================
+	                    new_HiFiBR2 (beta_ver2.0.3)                                              
+	        Contact: Nguyen Thi Tuyet Anh at ngtanh@hcmus.edu.vn                 
+================================================================================
+
+	                     DSBs Junctions Analyzing
+
+Parameters used during run
+	Working dir:		$ANALYSE_PATH
+	Config file path: 	$CONFIG_FILE
+	Reference file:         $ref_path    
+EOF
 
 #-----------------------------------------------------------------------------------------------
 # B. PROCESSING & ANALYZING
 for sample in ${dirName[@]}; do
 	# Prepare
-	echo "-----------------------------------------------------------"
-	echo "ANALYZING $sample ..."
+	$printout
+	echo "	Analyzing sample:	$sample"
 	cd $ANALYSE_PATH/$sample/		
 	cd ../
 
